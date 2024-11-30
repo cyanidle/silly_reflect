@@ -2,6 +2,10 @@
 Reflection with template lambda visitor!
 # Example
 ```cpp
+#include "reflect/reflect.hpp"
+#include <iostream>
+
+
 struct Base {};
 struct Attr : Base {};
 struct Attr1 {};
@@ -12,9 +16,9 @@ struct Data {
     int b[2];
     int c[3];
 
-    void method();
-    virtual void virt_method();
-    virtual void pure_method() = 0;
+    int method();
+    virtual int virt_method();
+    virtual int pure_method() = 0;
 
     REFLECT(Data, Attr) {
         MEMBER(a, Attr, int)
@@ -25,4 +29,18 @@ struct Data {
         MEMBER(pure_method, Attr, char)   
     }
 };
+
+void test(Data* object) {
+    Data::Reflection([&](auto f){
+        using Field = decltype(f);
+        using Attrs = typename Field::Attributes;
+        if constexpr (f.is_field) {
+            std::cout << f.name << ": field value: " << f.get(*object) << std::endl;
+        } else if constexpr (f.is_method) {
+            std::cout << f.name << ": call() result: " << f.call(*object) << std::endl;
+        }
+    });
+}
+
+
 ```

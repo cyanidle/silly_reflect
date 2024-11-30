@@ -56,7 +56,12 @@ struct Member {
     static constexpr auto is_method = std::is_member_function_pointer_v<raw_type>;
     static constexpr auto is_field = std::is_member_object_pointer_v<raw_type>;
     template<typename T> static constexpr decltype(auto) get(T&& obj) noexcept {
+        static_assert(is_field);
         return std::forward<T>(obj).*v;
+    }
+    template<typename T, typename...Args> static constexpr decltype(auto) call(T&& obj, Args&&...a) {
+        static_assert(is_method);
+        return (std::forward<T>(obj).*v)(std::forward<Args>(a)...);
     }
     template<typename A>
     static constexpr bool has_attr() {

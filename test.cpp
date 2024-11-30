@@ -1,7 +1,6 @@
 #include "reflect/reflect.hpp"
+#include <iostream>
 
-// This test is compile-time
-// Look at link errors to see type names
 
 struct Base {};
 struct Attr : Base {};
@@ -13,9 +12,9 @@ struct Data {
     int b[2];
     int c[3];
 
-    void method();
-    virtual void virt_method();
-    virtual void pure_method() = 0;
+    int method();
+    virtual int virt_method();
+    virtual int pure_method() = 0;
 
     REFLECT(Data, Attr) {
         MEMBER(a, Attr, int)
@@ -27,25 +26,15 @@ struct Data {
     }
 };
 
-template<typename...A>
-extern size_t check_attrs(reflect::Attrs<A...>);
-
-template<typename T>
-void check_value(T&);
-
 void test(Data* object) {
     Data::Reflection([&](auto f){
-        using F = decltype(f);
-        using A = reflect::extract_t<Base, F>;
-        static_assert(!std::is_void_v<A>);
-        static_assert(std::is_same_v<A, Attr>);
-        check_attrs(f.get_attrs());
+        using Field = decltype(f);
+        using Attrs = typename Field::Attributes;
+        if constexpr (f.is_field) {
+            std::cout << f.name << ": field value: " << f.get(*object) << std::endl;
+        } else if constexpr (f.is_method) {
+            std::cout << f.name << ": call() result: " << f.call(*object) << std::endl;
+        }
     });
-}
-
-int main(int argc, char *argv[])
-{
-    test(nullptr);
-    return 0;
 }
 
