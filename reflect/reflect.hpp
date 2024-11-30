@@ -92,12 +92,14 @@ using extract_t = typename extract<Attr, T>::type;
 
 } //reflect
 
-#define REFLECT(Class, ...) public: \
-using _ = Class; \
-using Attributes = ::reflect::Attrs<__VA_ARGS__>; \
-static constexpr size_t _memberIdBase = __COUNTER__; \
-template<typename Fn> \
-static constexpr void Reflection(Fn _reflect)
+#define REFLECT(Class, ...) \
+private: \
+    using _ = Class; \
+    static constexpr size_t _memberIdBase = __COUNTER__; \
+public: \
+    using Attributes = ::reflect::Attrs<__VA_ARGS__>; \
+    template<typename Fn> \
+    static constexpr void Reflection(Fn _reflect)
 
 #define MEMBER(f, ...) _reflect(reflect::Member<(__COUNTER__ - 1) - _::_memberIdBase, &_::f, ##__VA_ARGS__>{#f});
 
