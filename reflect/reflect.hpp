@@ -45,21 +45,11 @@ auto do_extract(Attrs<Head, Tail...>) {
 
 } //detail
 
-template<typename T, typename...Attr>
-struct Class {
-    using type = T;
-    static constexpr Attrs<Attr...> get_attrs() {
-        return {};
-    }
-    template<typename A>
-    static constexpr bool has_attr() {
-        return (false || ... || std::is_base_of_v<A, Attr>);
-    }
-};
-
-template<size_t id, auto v, typename...Attr>
+template<size_t i, auto v, typename...Attr>
 struct Member {
+    const char* name = "";
     static constexpr auto value = v;
+    static constexpr auto id = i;
     using raw_type = decltype(v);
     using type = typename detail::info<raw_type>::type;
     using cls = typename detail::info<raw_type>::cls;
@@ -72,24 +62,9 @@ struct Member {
     static constexpr bool has_attr() {
         return (false || ... || std::is_base_of_v<A, Attr>);
     }
-    static constexpr Attrs<Attr...> get_attrs() {
+    using Attributes = Attrs<Attr...>;
+    static constexpr Attributes get_attrs() {
         return {};
-    }
-};
-
-template<typename T, typename...Ms>
-struct Reflection {
-    using type = typename T::type;
-    static constexpr auto get_attrs() {
-        return T::get_attrs();
-    }
-    template<typename A>
-    static constexpr bool has_attr() {
-        return T::template has_attr<A>();
-    }
-    template<typename Fn>
-    static constexpr void for_each(Fn f) {
-        (static_cast<void>(f(Ms{})), ...);
     }
 };
 
@@ -97,38 +72,28 @@ template<typename T, typename = void>
 struct is_reflected : std::false_type {};
 
 template<typename T>
-struct is_reflected<T, std::void_t<typename T::Reflection>> : std::true_type {};
+struct is_reflected<T, std::void_t<decltype(T::Reflection), typename T::Attributes>> : std::true_type {};
 
 template<typename T>
 constexpr bool is_reflected_v = is_reflected<T>::value;
 
 template<typename Attr, typename T, typename = void>
 struct extract {
-    using type = typename decltype(detail::do_extract<Attr>(T::get_attrs()))::type;
+    using type = typename decltype(detail::do_extract<Attr>(typename T::Attributes{}))::type;
 };
-
-template<typename Attr, typename T>
-struct extract<Attr, T, std::void_t<typename T::Reflection>> :
-                                                               extract<Attr, typename T::Reflection>
-{};
 
 template<typename Attr, typename T>
 using extract_t = typename extract<Attr, T>::type;
 
-template<typename T, typename Fn, typename = std::enable_if_t<is_reflected_v<T>>>
-constexpr void for_each(Fn f) {
-    T::Reflection::for_each(f);
-}
-
 } //reflect
 
-#define REFLECT(x, ...) \
-using _ = typename x::type; \
-    using Reflection = reflect::Reflection<x, ##__VA_ARGS__>;
+#define REFLECT(Class, ...) public: \
+using _ = Class; \
+using Attributes = ::reflect::Attrs<__VA_ARGS__>; \
+static constexpr size_t _memberIdBase = __COUNTER__; \
+template<typename Fn> \
+static constexpr void Reflection(Fn _reflect)
 
-#define CLASS(x, ...) reflect::Class<x, ##__VA_ARGS__>
-#define MEMBER(f, ...) reflect::Member<__COUNTER__, &_::f, ##__VA_ARGS__>
-
+#define MEMBER(f, ...) _reflect(reflect::Member<(__COUNTER__ - 1) - _::_memberIdBase, &_::f, ##__VA_ARGS__>{#f});
 
 #endif // REFLECT_HPP
-
